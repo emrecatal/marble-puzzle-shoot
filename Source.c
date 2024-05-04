@@ -56,7 +56,6 @@ int isWinning(node*);
 int checkCollision(node**, bullet*);
 target* shotTargetIndex(node*, bullet*);
 int whereTarget(node*);
-int whereTarget2(node*);
 void createOne(bullet);
 void stepBack(node*, target*);
 
@@ -116,7 +115,7 @@ void createOne(bullet mermi) {
 			current = current->next;
 		}
 
-		switch (whereTarget(head)) {
+		switch (whereTarget(current)) {
 		case 1: // aþaðý
 			newCreated->x = current->data->x;
 			newCreated->y = current->data->y - 40;
@@ -201,27 +200,10 @@ void updateTarget(node* head) {
 	}
 }
 
-int whereTarget(node* head) {
-	node* current = head;
-	while (current->data != shotTargetIndex(head, &mermi)) {
-		current = current->next;
-	}
+int whereTarget(node* given) {
+	node* current = given;
 
 	target* selected = current->data;
-	if ((selected->x == 80) && (selected->y < screenHeight - 80)) return 1; //aþaðý gidiyor
-	if ((selected->y == screenHeight - 80) && (selected->x < screenWidth - 80)) return 3; // saða gidiyor
-	if ((selected->x == screenWidth - 80) && (selected->y > 80)) return 2; // yukarý gidiyor
-	if ((selected->y == 80) && (selected->x > 300)) return 4; // sola gidiyor
-	if ((selected->x == 300) && (selected->y < screenHeight - 160)) return 1;
-
-	if ((selected->y == screenHeight - 160) && (selected->x < screenWidth - 300) && (selected->x != 80)) return 3;
-	if ((selected->x == screenWidth - 300) && (selected->y > 160) && (selected->y != screenHeight - 80)) return 2;
-	if ((selected->y == 160) && (selected->x > 550) && (selected->x != screenWidth - 80)) return 4;
-	if ((selected->x == 550) && (selected->y < screenHeight / 2) && (selected->y != 80)) return 1;
-}
-
-int whereTarget2(node* given) {
-	target* selected = given->data;
 	if ((selected->x == 80) && (selected->y < screenHeight - 80)) return 1; //aþaðý gidiyor
 	if ((selected->y == screenHeight - 80) && (selected->x < screenWidth - 80)) return 3; // saða gidiyor
 	if ((selected->x == screenWidth - 80) && (selected->y > 80)) return 2; // yukarý gidiyor
@@ -324,7 +306,7 @@ void stepBack(node* head, target* shotTargetIndex) {
 	
 	while (current->next != NULL) {
 
-		switch (whereTarget2(current)) {
+		switch (whereTarget(current)) {
 		case 1: // aþaðý
 			current->data->x = current->data->x;
 			current->data->y = current->data->y - 40;
