@@ -111,7 +111,7 @@ void createOne(bullet mermi) {
 	if (newCreated != NULL) {
 		node* current = head;
 
-		while (current->next->data != shotTargetIndex(head, &mermi)) {
+		while (current->data != shotTargetIndex(head, &mermi)) {
 			current = current->next;
 		}
 
@@ -201,7 +201,7 @@ void updateTarget(node* head) {
 
 int whereTarget(node* head) {
 	node* current = head;
-	while (current->next->data != shotTargetIndex(head, &mermi)) {
+	while (current->data != shotTargetIndex(head, &mermi)) {
 		current = current->next;
 	}
 
