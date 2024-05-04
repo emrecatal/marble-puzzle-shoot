@@ -111,9 +111,10 @@ void createOne(bullet mermi) {
 	if (newCreated != NULL) {
 		node* current = head;
 
-		while (current->next != NULL) {
+		while (current->next->data != shotTargetIndex(head, &mermi)) {
 			current = current->next;
 		}
+
 		switch (whereTarget(head)) {
 		case 1: // aþaðý
 			newCreated->x = current->data->x;
@@ -132,6 +133,7 @@ void createOne(bullet mermi) {
 			newCreated->y = current->data->y;
 			break;
 		}
+
 		newCreated->radius = 20;
 		newCreated->color = mermi.color;
 		newCreated->moving = true;
@@ -199,7 +201,7 @@ void updateTarget(node* head) {
 
 int whereTarget(node* head) {
 	node* current = head;
-	while (current->next != NULL) {
+	while (current->next->data != shotTargetIndex(head, &mermi)) {
 		current = current->next;
 	}
 
@@ -290,14 +292,13 @@ target* shotTargetIndex(node* head, bullet* mermi) {
 	while (current != NULL) {
 		Vector2 hedefCenter = { current->data->x, current->data->y };
 		Vector2 mermiCenter = { mermi->ballPos.x, mermi->ballPos.y };
+
 		if (CheckCollisionCircles(hedefCenter, 20, mermiCenter, 20)) {
 			return current->data;
 		}
 		current = current->next;
 	}
 }
-
-
 
 
 
