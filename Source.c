@@ -56,7 +56,9 @@ int isWinning(node*);
 int checkCollision(node**, bullet*);
 target* shotTargetIndex(node*, bullet*);
 int whereTarget(node*);
+int whereTarget2(node*);
 void createOne(bullet);
+void stepBack(node*, target*);
 
 
 int main(void) {
@@ -78,7 +80,6 @@ int main(void) {
 		DrawRectangleRec(health, RED);
 		DrawText("HEALTH", 45, 20, 18, LIGHTGRAY);
 		if (mermi.active == true) DrawCircle(mermi.ballPos.x, mermi.ballPos.y, 20, mermi.color);
-		if (checkCollision(head, &mermi)) DrawCircle(shotTargetIndex(head, &mermi)->x, 20, 20, mermi.color);
 
 		EndDrawing();
 	}
@@ -167,6 +168,7 @@ void updateGame() {
 
 	if (checkCollision(head, &mermi)) {
 		createOne(mermi);
+		stepBack(head, shotTargetIndex(head, &mermi));
 	}
 
 }
@@ -216,7 +218,20 @@ int whereTarget(node* head) {
 	if ((selected->x == screenWidth - 300) && (selected->y > 160) && (selected->y != screenHeight - 80)) return 2;
 	if ((selected->y == 160) && (selected->x > 550) && (selected->x != screenWidth - 80)) return 4;
 	if ((selected->x == 550) && (selected->y < screenHeight / 2) && (selected->y != 80)) return 1;
-	
+}
+
+int whereTarget2(node* given) {
+	target* selected = given->data;
+	if ((selected->x == 80) && (selected->y < screenHeight - 80)) return 1; //aþaðý gidiyor
+	if ((selected->y == screenHeight - 80) && (selected->x < screenWidth - 80)) return 3; // saða gidiyor
+	if ((selected->x == screenWidth - 80) && (selected->y > 80)) return 2; // yukarý gidiyor
+	if ((selected->y == 80) && (selected->x > 300)) return 4; // sola gidiyor
+	if ((selected->x == 300) && (selected->y < screenHeight - 160)) return 1;
+
+	if ((selected->y == screenHeight - 160) && (selected->x < screenWidth - 300) && (selected->x != 80)) return 3;
+	if ((selected->x == screenWidth - 300) && (selected->y > 160) && (selected->y != screenHeight - 80)) return 2;
+	if ((selected->y == 160) && (selected->x > 550) && (selected->x != screenWidth - 80)) return 4;
+	if ((selected->x == 550) && (selected->y < screenHeight / 2) && (selected->y != 80)) return 1;
 }
 
 void targetCreator(node** head, target* hedef) {
@@ -300,6 +315,36 @@ target* shotTargetIndex(node* head, bullet* mermi) {
 	}
 }
 
+void stepBack(node* head, target* shotTargetIndex) {
+	node* current = head;
+	while (current->next != NULL && current->data != shotTargetIndex) {
+		current = current->next;
+	}
+	current = current->next;
+	
+	while (current->next != NULL) {
+
+		switch (whereTarget2(current)) {
+		case 1: // aþaðý
+			current->data->x = current->data->x;
+			current->data->y = current->data->y - 40;
+			break;
+		case 2: // yukarý
+			current->data->x = current->data->x;
+			current->data->y = current->data->y + 40;
+			break;
+		case 3: //saða
+			current->data->x = current->data->x - 40;
+			current->data->y = current->data->y;
+			break;
+		case 4: // sola
+			current->data->x = current->data->x + 40;
+			current->data->y = current->data->y;
+			break;
+		}
+		current = current->next;
+	}
+}
 
 
 void bulletFire() {
@@ -342,7 +387,7 @@ Color giveColorBullet(node* head) {
 	giveColorBullet(head);
 }
 
-bool isSameColor(Color color1, Color color2) {
+bool isSameColor(Color color1, Color color2) { 
 	return (color1.r == color2.r && color1.g == color2.g && color1.b == color2.b && color1.a == color2.a);
 }
 
