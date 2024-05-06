@@ -1,7 +1,7 @@
 #include <raylib.h> 
 #include <stdlib.h>
 #include <math.h>
-#define MAX_BALL 10
+#define MAX_BALL 5
 const int screenWidth = 1500;
 const int screenHeight = 800;
 
@@ -57,8 +57,8 @@ int checkCollision(node**, bullet*);
 target* shotTargetIndex(node*, bullet*);
 int whereTarget(node*);
 void createOne(bullet);
+void addTargetBetween(target* newCreated, target* shotTargetIndex);
 void stepBack(node*, target*);
-
 
 int main(void) {
 	InitWindow(screenWidth, screenHeight, "marble puzzle shoot");
@@ -72,14 +72,12 @@ int main(void) {
 		if (IsMouseButtonDown(MOUSE_LEFT_BUTTON)) bulletFire();
 
 		BeginDrawing();
-
 		drawTargets(head);
 		DrawCircle(screenWidth / 2, screenHeight / 2, 40.0, DARKGREEN);
 		DrawCircle(550, screenHeight / 2, 30, DARKGREEN);
 		DrawRectangleRec(health, RED);
 		DrawText("HEALTH", 45, 20, 18, LIGHTGRAY);
 		if (mermi.active == true) DrawCircle(mermi.ballPos.x, mermi.ballPos.y, 20, mermi.color);
-
 		EndDrawing();
 	}
 	freeTargets(head);
@@ -135,15 +133,34 @@ void createOne(bullet mermi) {
 		}
 
 		newCreated->radius = 20;
-		newCreated->color = mermi.color;
+		newCreated->color = PURPLE;
 		newCreated->moving = true;
 		num++;
 	}
-	targetCreator(&head, newCreated);
+	addTargetBetween(newCreated, shotTargetIndex(head, &mermi));
+}
+
+void addTargetBetween(target* newCreated, target* shotTargetIndex) {
+	node* current = head; 
+	node* new = (node*)malloc(sizeof(node));
+	if (new == NULL) return;
+
+	while (current->next->data != shotTargetIndex) {
+			current = current->next;
+	}
+
+
+	new->data = newCreated;
+
+	new->previous = current;
+	new->next = current->next;
+	current->next = new;
+	
 }
 
 void updateGame() {
 	updateTarget(head);
+
 
 	mermi.ballPos.x += mermi.ballSpeed.x;
 	mermi.ballPos.y += mermi.ballSpeed.y;
@@ -304,7 +321,7 @@ void stepBack(node* head, target* shotTargetIndex) {
 	}
 	current = current->next;
 	
-	while (current->next != NULL) {
+	while (current != NULL) {
 
 		switch (whereTarget(current)) {
 		case 1: // aþaðý
