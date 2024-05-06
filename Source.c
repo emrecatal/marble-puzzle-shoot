@@ -56,9 +56,9 @@ int isWinning(node*);
 int checkCollision(node**, bullet*);
 target* shotTargetIndex(node*, bullet*);
 int whereTarget(node*);
-void createOne(bullet);
-void addTargetBetween(target* newCreated, target* shotTargetIndex);
-void stepBack(node*, target*);
+target* createOne(bullet);
+node* addTargetBetween(target* newCreated, target* shotTargetIndex);
+void stepBack(node*, node*);
 
 int main(void) {
 	InitWindow(screenWidth, screenHeight, "marble puzzle shoot");
@@ -104,7 +104,7 @@ void initGame() {
 	mermi.active = true;
 }
 
-void createOne(bullet mermi) {
+target* createOne(bullet mermi) {
 	target* newCreated = (target*)malloc(sizeof(target));
 	if (newCreated != NULL) {
 		node* current = head;
@@ -116,6 +116,7 @@ void createOne(bullet mermi) {
 		switch (whereTarget(current)) {
 		case 1: // aþaðý
 			newCreated->x = current->data->x;
+			while(current->data->y =! )
 			newCreated->y = current->data->y - 40;
 			break;
 		case 2: // yukarý
@@ -133,29 +134,39 @@ void createOne(bullet mermi) {
 		}
 
 		newCreated->radius = 20;
-		newCreated->color = PURPLE;
+		newCreated->color = mermi.color;
 		newCreated->moving = true;
 		num++;
 	}
+	return newCreated;
 	addTargetBetween(newCreated, shotTargetIndex(head, &mermi));
 }
 
-void addTargetBetween(target* newCreated, target* shotTargetIndex) {
+node* addTargetBetween(target* newCreated, target* shotTargetIndex) {
 	node* current = head; 
+	node* shotted = NULL;
+
+	while (current->next != NULL) {
+		current = current->next;
+	}
+
 	node* new = (node*)malloc(sizeof(node));
 	if (new == NULL) return;
 
-	while (current->next->data != shotTargetIndex) {
-			current = current->next;
+	while (current->previous->data != shotTargetIndex) {
+			current = current->previous;
 	}
 
+	shotted = current->previous;
 
-	new->data = newCreated;
+ 	new->data = newCreated;
 
-	new->previous = current;
-	new->next = current->next;
-	current->next = new;
-	
+	new->next = current;
+	new->previous = shotted;
+	current->previous = new;
+	shotted->next = new;
+
+	return new;
 }
 
 void updateGame() {
@@ -184,7 +195,7 @@ void updateGame() {
 
 	if (checkCollision(head, &mermi)) {
 		createOne(mermi);
-		stepBack(head, shotTargetIndex(head, &mermi));
+		stepBack(head, addTargetBetween(createOne(mermi),shotTargetIndex(head, &mermi)));
 	}
 
 }
@@ -314,34 +325,39 @@ target* shotTargetIndex(node* head, bullet* mermi) {
 	}
 }
 
-void stepBack(node* head, target* shotTargetIndex) {
+void stepBack(node* head, node* newCreated) {
 	node* current = head;
-	while (current->next != NULL && current->data != shotTargetIndex) {
+
+	while (current->next != NULL) {
 		current = current->next;
 	}
-	current = current->next;
+
+	while (current->previous != NULL && current->previous != newCreated) {
+		current = current->previous;
+	}
+	current = current->previous;
 	
 	while (current != NULL) {
 
 		switch (whereTarget(current)) {
 		case 1: // aþaðý
 			current->data->x = current->data->x;
-			current->data->y = current->data->y - 40;
+			current->data->y = current->data->y + 40;
 			break;
 		case 2: // yukarý
 			current->data->x = current->data->x;
-			current->data->y = current->data->y + 40;
+			current->data->y = current->data->y - 40;
 			break;
 		case 3: //saða
-			current->data->x = current->data->x - 40;
-			current->data->y = current->data->y;
-			break;
-		case 4: // sola
 			current->data->x = current->data->x + 40;
 			current->data->y = current->data->y;
 			break;
+		case 4: // sola
+			current->data->x = current->data->x - 40;
+			current->data->y = current->data->y;
+			break;
 		}
-		current = current->next;
+		current = current->previous;
 	}
 }
 
