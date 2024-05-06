@@ -1,7 +1,7 @@
 #include <raylib.h> 
 #include <stdlib.h>
 #include <math.h>
-#define MAX_BALL 5
+#define MAX_BALL 10
 const int screenWidth = 1500;
 const int screenHeight = 800;
 
@@ -62,7 +62,7 @@ void stepBack(node*, node*);
 
 int main(void) {
 	InitWindow(screenWidth, screenHeight, "marble puzzle shoot");
-	SetTargetFPS(60);
+	SetTargetFPS(220);
 	initGame();
 
 	while (!WindowShouldClose()) {
@@ -116,7 +116,6 @@ target* createOne(bullet mermi) {
 		switch (whereTarget(current)) {
 		case 1: // aþaðý
 			newCreated->x = current->data->x;
-			while(current->data->y =! )
 			newCreated->y = current->data->y - 40;
 			break;
 		case 2: // yukarý
@@ -152,6 +151,18 @@ node* addTargetBetween(target* newCreated, target* shotTargetIndex) {
 
 	node* new = (node*)malloc(sizeof(node));
 	if (new == NULL) return;
+
+
+	if (current->data == shotTargetIndex) {
+		shotted = current->previous; //shotted deðil önceki
+		new->data = newCreated;
+
+		new->next = current;
+		new->previous = shotted;
+		current->previous = new;
+		shotted->next = new;
+		return new;
+	}
 
 	while (current->previous->data != shotTargetIndex) {
 			current = current->previous;
@@ -335,26 +346,119 @@ void stepBack(node* head, node* newCreated) {
 	while (current->previous != NULL && current->previous != newCreated) {
 		current = current->previous;
 	}
+
 	current = current->previous;
-	
+
+
 	while (current != NULL) {
+		int hamle = 40;
 
 		switch (whereTarget(current)) {
 		case 1: // aþaðý
-			current->data->x = current->data->x;
-			current->data->y = current->data->y + 40;
+			if (current->data->x == 80) {
+				while (hamle>0) {
+					while (current->data->y < screenHeight - 80 && hamle > 0) {
+						current->data->y += 1;
+						hamle -= 1;
+					}
+					while (current->data->y == screenHeight - 80 && hamle > 0) {
+						current->data->x += 1;
+						hamle -= 1;
+					}
+				}
+			}
+			else if (current->data->x == 300) {
+				while (hamle > 0) {
+					while (current->data->y < screenHeight - 160 && hamle > 0) {
+						current->data->y += 1;
+						hamle -= 1;
+					}
+					while (current->data->y == screenHeight - 160 && hamle > 0) {
+						current->data->x += 1;
+						hamle -= 1;
+					}
+				}
+			}
 			break;
+
 		case 2: // yukarý
-			current->data->x = current->data->x;
-			current->data->y = current->data->y - 40;
+			if (current->data->x == screenWidth - 80) {
+				while (hamle > 0) {
+					while (current->data->y > 80 && hamle > 0) {
+						current->data->y -= 1;
+						hamle -= 1;
+					}
+					while (current->data->y == 80 && hamle > 0) {
+						current->data->x -= 1;
+						hamle -= 1;
+					}
+				}
+			}
+			else if (current->data->x == screenWidth - 300) {
+				while (hamle > 0) {
+					while (current->data->y > 160 && hamle > 0) {
+						current->data->y -= 1;
+						hamle -= 1;
+					}
+					while (current->data->y ==  160 && hamle > 0) {
+						current->data->x -= 1;
+						hamle -= 1;
+					}
+				}
+			}
 			break;
+
 		case 3: //saða
-			current->data->x = current->data->x + 40;
-			current->data->y = current->data->y;
-			break;
+			if (current->data->y == screenHeight - 80) {
+				while (hamle > 0) {
+					while (current->data->x < screenWidth - 80 && hamle > 0) {
+						current->data->x += 1;
+						hamle -= 1;
+					}
+					while (current->data->x == screenWidth - 80 && hamle > 0) {
+						current->data->y -= 1;
+						hamle -= 1;
+					}
+				}
+			}
+			else if (current->data->y == screenHeight - 160) {
+				while (hamle > 0) {
+					while (current->data->x < screenWidth - 300 && hamle > 0) {
+						current->data->x += 1;
+						hamle -= 1;
+					}
+					while (current->data->x == screenWidth - 300 && hamle > 0) {
+						current->data->y -= 1;
+						hamle -= 1;
+					}
+				}
+			}
+
 		case 4: // sola
-			current->data->x = current->data->x - 40;
-			current->data->y = current->data->y;
+			if (current->data->y == 80) {
+				while (hamle > 0) {
+					while (current->data->x > 300 && hamle > 0) {
+						current->data->x -= 1;
+						hamle -= 1;
+					}
+					while (current->data->x == 300 && hamle > 0) {
+						current->data->y += 1;
+						hamle -= 1;
+					}
+				}
+			}
+			else if (current->data->y == 160) {
+				while (hamle > 0) {
+					while (current->data->x > 550 && hamle > 0) {
+						current->data->x -= 1;
+						hamle -= 1;
+					}
+					while (current->data->x == 550 && hamle > 0) {
+						current->data->y += 1;
+						hamle -= 1;
+					}
+				}
+			}
 			break;
 		}
 		current = current->previous;
