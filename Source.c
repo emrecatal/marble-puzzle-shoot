@@ -59,10 +59,11 @@ int whereTarget(node*);
 target* createOne(bullet);
 node* addTargetBetween(target* newCreated, target* shotTargetIndex);
 void stepBack(node*, node*);
+void isBoom(node* addedNode);
 
 int main(void) {
 	InitWindow(screenWidth, screenHeight, "marble puzzle shoot");
-	SetTargetFPS(220);
+	SetTargetFPS(120);
 	initGame();
 
 	while (!WindowShouldClose()) {
@@ -141,8 +142,53 @@ target* createOne(bullet mermi) {
 	addTargetBetween(newCreated, shotTargetIndex(head, &mermi));
 }
 
+/*node* addTargetBetween(target* newCreated, target* shotTargetIndex) {
+	node* current = head;
+	node* shotted = NULL;
+
+	while (current->next != NULL) {
+		current = current->next;
+	}
+
+	node* new = (node*)malloc(sizeof(node));
+	if (new == NULL) return NULL;
+	
+	if (current->data == shotTargetIndex) {	
+		shotted = current->previous; 
+
+		new->data = newCreated;
+
+		new->next = current;
+		new->previous = shotted;
+		current->previous = new;
+		shotted->next = new;
+		return new;
+	}
+
+	while (current->previous->data != shotTargetIndex) {
+		current = current->previous;
+	}
+		shotted = current->previous; // shotted should be the node before current
+
+		new->data = newCreated;
+
+		new->next = current;
+		new->previous = shotted;
+		current->previous = new;
+		if (shotted != NULL) {
+			shotted->next = new;
+		}
+		else {
+			head = new;
+		}
+	
+	return new;
+} */
+
+
+
 node* addTargetBetween(target* newCreated, target* shotTargetIndex) {
-	node* current = head; 
+	node* current = head;
 	node* shotted = NULL;
 
 	while (current->next != NULL) {
@@ -165,12 +211,12 @@ node* addTargetBetween(target* newCreated, target* shotTargetIndex) {
 	}
 
 	while (current->previous->data != shotTargetIndex) {
-			current = current->previous;
+		current = current->previous;
 	}
 
 	shotted = current->previous;
 
- 	new->data = newCreated;
+	new->data = newCreated;
 
 	new->next = current;
 	new->previous = shotted;
@@ -178,7 +224,7 @@ node* addTargetBetween(target* newCreated, target* shotTargetIndex) {
 	shotted->next = new;
 
 	return new;
-}
+} 
 
 void updateGame() {
 	updateTarget(head);
@@ -207,6 +253,7 @@ void updateGame() {
 	if (checkCollision(head, &mermi)) {
 		createOne(mermi);
 		stepBack(head, addTargetBetween(createOne(mermi),shotTargetIndex(head, &mermi)));
+		isBoom(addTargetBetween(createOne(mermi), shotTargetIndex(head, &mermi)));
 	}
 
 }
@@ -356,108 +403,120 @@ void stepBack(node* head, node* newCreated) {
 		switch (whereTarget(current)) {
 		case 1: // aþaðý
 			if (current->data->x == 80) {
-				while (hamle>0) {
-					while (current->data->y < screenHeight - 80 && hamle > 0) {
-						current->data->y += 1;
-						hamle -= 1;
-					}
-					while (current->data->y == screenHeight - 80 && hamle > 0) {
-						current->data->x += 1;
-						hamle -= 1;
-					}
+
+				while (current->data->y < screenHeight - 80 && hamle > 0) {
+					current->data->y += 1;
+					hamle -= 1;
 				}
+				while (current->data->y == screenHeight - 80 && hamle > 0) {
+					current->data->x += 1;
+					hamle -= 1;
+				}
+
 			}
 			else if (current->data->x == 300) {
-				while (hamle > 0) {
-					while (current->data->y < screenHeight - 160 && hamle > 0) {
-						current->data->y += 1;
-						hamle -= 1;
-					}
-					while (current->data->y == screenHeight - 160 && hamle > 0) {
-						current->data->x += 1;
-						hamle -= 1;
-					}
+
+				while (current->data->y < screenHeight - 160 && hamle > 0) {
+					current->data->y += 1;
+					hamle -= 1;
 				}
+				while (current->data->y == screenHeight - 160 && hamle > 0) {
+					current->data->x += 1;
+					hamle -= 1;
+				}
+
+			}
+			else if (current->data->x == 550) {
+
+				while (current->data->y < screenHeight / 2 && hamle > 0) {
+					current->data->y += 1;
+					hamle -= 1;
+				}
+				while (current->data->y >= screenHeight / 2 && hamle > 0) {
+					current->data->y = screenHeight / 2;
+					hamle -= 1;
+				}
+
 			}
 			break;
 
 		case 2: // yukarý
 			if (current->data->x == screenWidth - 80) {
-				while (hamle > 0) {
-					while (current->data->y > 80 && hamle > 0) {
-						current->data->y -= 1;
-						hamle -= 1;
-					}
-					while (current->data->y == 80 && hamle > 0) {
-						current->data->x -= 1;
-						hamle -= 1;
-					}
+
+				while (current->data->y > 80 && hamle > 0) {
+					current->data->y -= 1;
+					hamle -= 1;
 				}
+				while (current->data->y == 80 && hamle > 0) {
+					current->data->x -= 1;
+					hamle -= 1;
+				}
+
 			}
 			else if (current->data->x == screenWidth - 300) {
-				while (hamle > 0) {
-					while (current->data->y > 160 && hamle > 0) {
-						current->data->y -= 1;
-						hamle -= 1;
-					}
-					while (current->data->y ==  160 && hamle > 0) {
-						current->data->x -= 1;
-						hamle -= 1;
-					}
+
+				while (current->data->y > 160 && hamle > 0) {
+					current->data->y -= 1;
+					hamle -= 1;
 				}
+				while (current->data->y == 160 && hamle > 0) {
+					current->data->x -= 1;
+					hamle -= 1;
+				}
+
 			}
 			break;
 
 		case 3: //saða
 			if (current->data->y == screenHeight - 80) {
-				while (hamle > 0) {
-					while (current->data->x < screenWidth - 80 && hamle > 0) {
-						current->data->x += 1;
-						hamle -= 1;
-					}
-					while (current->data->x == screenWidth - 80 && hamle > 0) {
-						current->data->y -= 1;
-						hamle -= 1;
-					}
+
+				while (current->data->x < screenWidth - 80 && hamle > 0) {
+					current->data->x += 1;
+					hamle -= 1;
 				}
+				while (current->data->x == screenWidth - 80 && hamle > 0) {
+					current->data->y -= 1;
+					hamle -= 1;
+				}
+
 			}
 			else if (current->data->y == screenHeight - 160) {
-				while (hamle > 0) {
-					while (current->data->x < screenWidth - 300 && hamle > 0) {
-						current->data->x += 1;
-						hamle -= 1;
-					}
-					while (current->data->x == screenWidth - 300 && hamle > 0) {
-						current->data->y -= 1;
-						hamle -= 1;
-					}
+
+				while (current->data->x < screenWidth - 300 && hamle > 0) {
+					current->data->x += 1;
+					hamle -= 1;
 				}
+				while (current->data->x == screenWidth - 300 && hamle > 0) {
+					current->data->y -= 1;
+					hamle -= 1;
+				}
+
 			}
 
 		case 4: // sola
 			if (current->data->y == 80) {
-				while (hamle > 0) {
-					while (current->data->x > 300 && hamle > 0) {
-						current->data->x -= 1;
-						hamle -= 1;
-					}
-					while (current->data->x == 300 && hamle > 0) {
-						current->data->y += 1;
-						hamle -= 1;
-					}
+
+				while (current->data->x > 300 && hamle > 0) {
+					current->data->x -= 1;
+					hamle -= 1;
 				}
+				while (current->data->x == 300 && hamle > 0) {
+					current->data->y += 1;
+					hamle -= 1;
+				}
+
 			}
 			else if (current->data->y == 160) {
-				while (hamle > 0) {
-					while (current->data->x > 550 && hamle > 0) {
-						current->data->x -= 1;
-						hamle -= 1;
-					}
-					while (current->data->x == 550 && hamle > 0) {
-						current->data->y += 1;
-						hamle -= 1;
-					}
+
+				while (current->data->x > 550 && hamle > 0) {
+					current->data->x -= 1;
+					hamle -= 1;
 				}
+				while (current->data->x == 550 && hamle > 0) {
+					current->data->y += 1;
+					hamle -= 1;
+				}
+
 			}
 			break;
 		}
@@ -465,6 +524,16 @@ void stepBack(node* head, node* newCreated) {
 	}
 }
 
+void isBoom(node* addTargetBetween){
+	node* newNode = addTargetBetween;
+	
+	if (isSameColor(newNode->data->color, newNode->next->data->color) && isSameColor(newNode->data->color, newNode->previous->data->color)) {
+		newNode->data->moving = false;
+		newNode->previous->next = newNode->next;
+		newNode->next->previous = newNode->previous;
+		free(newNode);
+	}
+}
 
 void bulletFire() {
 	if (mermi.isFired == false && mermi.active == true) {
