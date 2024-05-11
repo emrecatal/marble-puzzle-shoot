@@ -1,17 +1,18 @@
 #include <raylib.h> 
 #include <stdlib.h>
 #include <math.h>
-#define MAX_BALL 10
+#define MAX_BALL 11
 const int screenWidth = 1500;
 const int screenHeight = 800;
 
-typedef enum { GAMEPLAY, LOSING, WINNING } GameScreen;
+typedef enum { GAMEPLAY, LOSING, WINNING } GameScreen; 
 
 typedef struct target {
 	float x;
 	float y;
 	float radius;
 	Color color;
+	bool active;
 	bool moving;
 }target;
 
@@ -38,14 +39,16 @@ Vector2 mouse = { 0 };
 double aimingAngle = 0;
 Rectangle health = { 20,20,120,15 };
 int healthCounter = 0;
-int num = 0;
+Vector2 hold = { 0 };
+int fpsCounter = 0;
+int anlýkFps = 0;
 
 void initGame();
 void updateGame();
 void targetCreator(node**, target*);
 void drawTargets(node*);
 void freeTargets(node*);
-void updateTarget(node*);
+void updateTarget(node**);
 void bulletFire();
 Color giveColor();
 Color giveColorBullet(node*);
@@ -53,17 +56,17 @@ bool isSameColor(Color, Color);
 GameScreen updateScreen(int);
 int isWinning(node*);
 
-int checkCollision(node**, bullet*);
-target* shotTargetIndex(node*, bullet*);
+int checkCollision(node*, bullet*);
+target* shotTargetIndex(node**, bullet*);
 int whereTarget(node*);
 target* createOne(bullet);
 node* addTargetBetween(target* newCreated, target* shotTargetIndex);
 void stepBack(node*, node*);
-void isBoom(node* addedNode);
+void isBoom();
 
 int main(void) {
 	InitWindow(screenWidth, screenHeight, "marble puzzle shoot");
-	SetTargetFPS(120);
+	SetTargetFPS(60);
 	initGame();
 
 	while (!WindowShouldClose()) {
@@ -71,7 +74,14 @@ int main(void) {
 
 		updateGame();
 		if (IsMouseButtonDown(MOUSE_LEFT_BUTTON)) bulletFire();
-
+		
+		
+		if (checkCollision(head, &mermi)) {
+			createOne(mermi);
+			stepBack(head, addTargetBetween(createOne(mermi), shotTargetIndex(&head, &mermi)));
+			isBoom();
+		}
+		
 		BeginDrawing();
 		drawTargets(head);
 		DrawCircle(screenWidth / 2, screenHeight / 2, 40.0, DARKGREEN);
@@ -87,11 +97,12 @@ int main(void) {
 }
 
 void initGame() {
-	for (num = 0; num < MAX_BALL; num++) {
+	for (int num = 0; num < MAX_BALL; num++) {
 		hedef[num].x = 80;
 		hedef[num].y = 80 - num * 40;
 		hedef[num].radius = 20;
 		hedef[num].color = giveColor();
+		hedef[num].active = true;
 		hedef[num].moving = true;
 
 		targetCreator(&head, &hedef[num]);
@@ -105,12 +116,85 @@ void initGame() {
 	mermi.active = true;
 }
 
+void targetCreator(node** head, target* hedef) {
+	node* new_node = (node*)malloc(sizeof(node));
+	if (new_node == NULL) {
+		return;
+	}
+
+	new_node->data = (target*)malloc(sizeof(target));
+	if (new_node->data == NULL) {
+		free(new_node);
+		return;
+	}
+
+	new_node->data->x = hedef->x;
+	new_node->data->y = hedef->y;
+	new_node->data->radius = hedef->radius;
+	new_node->data->color = hedef->color;
+	new_node->data->active = hedef->active;
+	new_node->data->moving = hedef->moving;
+	new_node->next = NULL;
+	new_node->previous = NULL;
+
+	if (*head == NULL) {
+		*head = new_node;
+	}
+	else {
+		node* current = *head;
+		while (current->next != NULL) {
+			current = current->next;
+		}
+		current->next = new_node;
+		new_node->previous = current;
+	}
+}
+
+void updateGame() {
+	updateTarget(&head);
+
+
+	mermi.ballPos.x += mermi.ballSpeed.x;
+	mermi.ballPos.y += mermi.ballSpeed.y;
+
+	if (mermi.isFired == true) {
+		mermi.ballPos.x += cos(aimingAngle) * 4.0f;
+		mermi.ballPos.y += sin(aimingAngle) * 4.0f;
+	}
+
+	if (mermi.ballPos.x > (float)screenWidth + 20.0 || mermi.ballPos.x < -20.0 || mermi.ballPos.y >(float)screenHeight + 20.0 || mermi.ballPos.y < -20.0) {
+		mermi.active = false;
+	}
+	if (mermi.active == false) {
+		mermi.color = giveColorBullet(head);
+		mermi.ballPos = (Vector2){ screenWidth / 2, screenHeight / 2 };
+		mermi.ballSpeed.x = 0.0;
+		mermi.ballSpeed.y = 0.0;
+		mermi.isFired = false;
+		mermi.active = true;
+	}
+
+	node* temp = head;
+	while (temp->next != NULL) {
+		if (temp->data->active == true && temp->data->x == hold.x && temp->data->y == hold.y) {
+			node* bos = head;
+			while (bos->next != NULL) {
+				if (bos->data->active = true) {
+					bos->data->moving = true;
+				}
+				temp = temp->next;
+			}
+		}
+		temp = temp->next;
+	}
+}
+
 target* createOne(bullet mermi) {
 	target* newCreated = (target*)malloc(sizeof(target));
 	if (newCreated != NULL) {
 		node* current = head;
 
-		while (current->data != shotTargetIndex(head, &mermi)) {
+		while (current->data != shotTargetIndex(&head, &mermi)) {
 			current = current->next;
 		}
 
@@ -135,80 +219,31 @@ target* createOne(bullet mermi) {
 
 		newCreated->radius = 20;
 		newCreated->color = mermi.color;
+		newCreated->active = true;
 		newCreated->moving = true;
-		num++;
 	}
 	return newCreated;
-	addTargetBetween(newCreated, shotTargetIndex(head, &mermi));
 }
-
-/*node* addTargetBetween(target* newCreated, target* shotTargetIndex) {
-	node* current = head;
-	node* shotted = NULL;
-
-	while (current->next != NULL) {
-		current = current->next;
-	}
-
-	node* new = (node*)malloc(sizeof(node));
-	if (new == NULL) return NULL;
-	
-	if (current->data == shotTargetIndex) {	
-		shotted = current->previous; 
-
-		new->data = newCreated;
-
-		new->next = current;
-		new->previous = shotted;
-		current->previous = new;
-		shotted->next = new;
-		return new;
-	}
-
-	while (current->previous->data != shotTargetIndex) {
-		current = current->previous;
-	}
-		shotted = current->previous; // shotted should be the node before current
-
-		new->data = newCreated;
-
-		new->next = current;
-		new->previous = shotted;
-		current->previous = new;
-		if (shotted != NULL) {
-			shotted->next = new;
-		}
-		else {
-			head = new;
-		}
-	
-	return new;
-} */
-
 
 
 node* addTargetBetween(target* newCreated, target* shotTargetIndex) {
 	node* current = head;
 	node* shotted = NULL;
 
+	node* new = (node*)malloc(sizeof(node));
+	if (new == NULL) return NULL;
+
 	while (current->next != NULL) {
 		current = current->next;
 	}
 
-	node* new = (node*)malloc(sizeof(node));
-	if (new == NULL) return;
-
-
 	if (current->data == shotTargetIndex) {
-		shotted = current->previous; //shotted deðil önceki
-		new->data = newCreated;
-
-		new->next = current;
-		new->previous = shotted;
-		current->previous = new;
-		shotted->next = new;
+		current->next = new;
+		new->previous = current;
+		new->next = NULL;
 		return new;
 	}
+
 
 	while (current->previous->data != shotTargetIndex) {
 		current = current->previous;
@@ -226,42 +261,10 @@ node* addTargetBetween(target* newCreated, target* shotTargetIndex) {
 	return new;
 } 
 
-void updateGame() {
-	updateTarget(head);
+void updateTarget(node** head) {
+	node* current = *head;
 
-
-	mermi.ballPos.x += mermi.ballSpeed.x;
-	mermi.ballPos.y += mermi.ballSpeed.y;
-
-	if (mermi.isFired == true) {
-		mermi.ballPos.x += cos(aimingAngle) * 4.0f;
-		mermi.ballPos.y += sin(aimingAngle) * 4.0f;
-	}
-
-	if (mermi.ballPos.x > (float)screenWidth + 20.0 || mermi.ballPos.x < -20.0 || mermi.ballPos.y >(float)screenHeight + 20.0 || mermi.ballPos.y < -20.0) {
-		mermi.active = false;
-	}
-	if (mermi.active == false) {
-		mermi.color = giveColorBullet(head);
-		mermi.ballPos = (Vector2){ screenWidth / 2, screenHeight / 2 };
-		mermi.ballSpeed.x = 0.0;
-		mermi.ballSpeed.y = 0.0;
-		mermi.isFired = false;
-		mermi.active = true;
-	}
-
-	if (checkCollision(head, &mermi)) {
-		createOne(mermi);
-		stepBack(head, addTargetBetween(createOne(mermi),shotTargetIndex(head, &mermi)));
-		isBoom(addTargetBetween(createOne(mermi), shotTargetIndex(head, &mermi)));
-	}
-
-}
-
-void updateTarget(node* head) {
-	node* current = head;
-
-	while (current != NULL) {
+	while (current->next != NULL) {
 		target* selected = current->data;
 		if (selected->moving == true) {
 
@@ -300,58 +303,10 @@ int whereTarget(node* given) {
 	if ((selected->x == screenWidth - 300) && (selected->y > 160) && (selected->y != screenHeight - 80)) return 2;
 	if ((selected->y == 160) && (selected->x > 550) && (selected->x != screenWidth - 80)) return 4;
 	if ((selected->x == 550) && (selected->y < screenHeight / 2) && (selected->y != 80)) return 1;
+
+	else return 0;
 }
 
-void targetCreator(node** head, target* hedef) {
-	node* new_node = (node*)malloc(sizeof(node));
-	if (new_node == NULL) {
-		return;
-	}
-
-	new_node->data = (target*)malloc(sizeof(target));
-	if (new_node->data == NULL) {
-		free(new_node);
-		return;
-	}
-
-	new_node->data->x = hedef->x;
-	new_node->data->y = hedef->y;
-	new_node->data->radius = hedef->radius;
-	new_node->data->color = hedef->color;
-	new_node->data->moving = hedef->moving;
-	new_node->next = NULL;
-	new_node->previous = NULL;
-
-	if (*head == NULL) {
-		*head = new_node;
-	}
-	else {
-		node* current = *head;
-		while (current->next != NULL) {
-			current = current->next;
-		}
-		current->next = new_node;
-		new_node->previous = current;
-	}
-}
-
-void drawTargets(node* head) {
-	node* current = head;
-	while (current != NULL) {
-		DrawCircle(current->data->x, current->data->y, current->data->radius, current->data->color);
-		current = current->next;
-	}
-}
-
-void freeTargets(node* head) {
-	node* current = head;
-	while (current != NULL) {
-		node* next = current->next;
-		free(current->data);
-		free(current);
-		current = next;
-	}
-}
 
 int checkCollision(node* head, bullet* mermi) {
 	node* current = head;
@@ -369,10 +324,10 @@ int checkCollision(node* head, bullet* mermi) {
 	return 0;
 }
 
-target* shotTargetIndex(node* head, bullet* mermi) {
-	node* current = head;
+target* shotTargetIndex(node** head, bullet* mermi) {
+	node* current = *head;
 
-	while (current != NULL) {
+	while (current->next != NULL) {
 		Vector2 hedefCenter = { current->data->x, current->data->y };
 		Vector2 mermiCenter = { mermi->ballPos.x, mermi->ballPos.y };
 
@@ -380,6 +335,49 @@ target* shotTargetIndex(node* head, bullet* mermi) {
 			return current->data;
 		}
 		current = current->next;
+	}
+	return NULL;
+}
+
+void isBoom() {
+	node* vurulan = head;
+	node* eklenen = NULL;
+	while (vurulan->next != NULL && vurulan->data != shotTargetIndex(&head, &mermi)) {
+		vurulan = vurulan->next;
+	}
+	eklenen = vurulan->next;
+	
+
+	if ((isSameColor(eklenen->data->color, eklenen->next->data->color) && isSameColor(eklenen->data->color, eklenen->previous->data->color))
+		|| (isSameColor(eklenen->data->color, eklenen->next->data->color) && isSameColor(eklenen->next->data->color, eklenen->next->next->data->color))
+		|| (isSameColor(eklenen->data->color, eklenen->previous->data->color) && isSameColor(eklenen->previous->data->color, eklenen->previous->previous->data->color))) {
+		eklenen->data->active = false; //ekleneni yok et
+		eklenen->data->moving = false;
+		node* tut = eklenen;
+		/*eklenen->next->previous = eklenen->previous;
+		eklenen->previous->next = eklenen->next;
+		free(eklenen->data);
+		free(eklenen);*/
+
+		node* current = tut;
+		while (isSameColor(current->next->data->color, current->data->color) ) { //eklenenin arkasýndakileri de yok et
+			current->next->data->active = false;
+			current->next->data->moving = false;
+			current = current->next;
+		}
+
+		current = tut;
+		while (isSameColor(current->previous->data->color, current->data->color) ) { //eklenenin önündekileri de yok et
+			hold = (Vector2){ current->previous->data->x, current->previous->data->y };
+			current->previous->data->active = false;
+			current->previous->data->moving = false;
+			current = current->previous;
+		}
+
+		while (current->previous != NULL) { //öndekileri durdur
+			current->previous->data->moving = false;
+			current = current->previous;
+		}
 	}
 }
 
@@ -524,14 +522,24 @@ void stepBack(node* head, node* newCreated) {
 	}
 }
 
-void isBoom(node* addTargetBetween){
-	node* newNode = addTargetBetween;
-	
-	if (isSameColor(newNode->data->color, newNode->next->data->color) && isSameColor(newNode->data->color, newNode->previous->data->color)) {
-		newNode->data->moving = false;
-		newNode->previous->next = newNode->next;
-		newNode->next->previous = newNode->previous;
-		free(newNode);
+
+void drawTargets(node* head) {
+	node* current = head;
+	while (current->next != NULL) {
+		if (current->data->active == true) {
+			DrawCircle(current->data->x, current->data->y, current->data->radius, current->data->color);
+		}
+		current = current->next;
+	}
+}
+
+void freeTargets(node* head) {
+	node* current = head;
+	while (current != NULL) {
+		node* next = current->next;
+		free(current->data);
+		free(current);
+		current = next;
 	}
 }
 
