@@ -1,7 +1,8 @@
 #include <raylib.h> 
 #include <stdlib.h>
 #include <math.h>
-#define MAX_BALL 11
+#include <time.h>
+#define MAX_BALL 20
 const int screenWidth = 1500;
 const int screenHeight = 800;
 
@@ -40,8 +41,10 @@ double aimingAngle = 0;
 Rectangle health = { 20,20,120,15 };
 int healthCounter = 0;
 Vector2 hold = { 0 };
-int fpsCounter = 0;
-int anlýkFps = 0;
+node* holdBallNext = NULL;
+node* holdBallPre = NULL;
+double collisionTime = -1;
+double timeHolder = -1;
 
 void initGame();
 void updateGame();
@@ -66,22 +69,41 @@ void isBoom();
 
 int main(void) {
 	InitWindow(screenWidth, screenHeight, "marble puzzle shoot");
-	SetTargetFPS(60);
+	SetTargetFPS(100);
 	initGame();
 
 	while (!WindowShouldClose()) {
 		ClearBackground(LIGHTGRAY);
 
 		updateGame();
+		updateTarget(&head);
 		if (IsMouseButtonDown(MOUSE_LEFT_BUTTON)) bulletFire();
-		
-		
+
 		if (checkCollision(head, &mermi)) {
 			createOne(mermi);
 			stepBack(head, addTargetBetween(createOne(mermi), shotTargetIndex(&head, &mermi)));
+			/*if (patlayacakmý() == true) {
+				collisionTime = GetTime();
+				timeHolder = GetTime();
+			}*/
 			isBoom();
 		}
+
 		
+
+		/*if (collisionTime >= 0) {
+			while (collisionTime >= 0) {
+				if (timeHolder - collisionTime < 1) {
+					timeHolder = GetTime();
+				}
+				else {
+					
+					collisionTime = -1;
+					timeHolder = -1;
+				}
+			}
+		}*/
+
 		BeginDrawing();
 		drawTargets(head);
 		DrawCircle(screenWidth / 2, screenHeight / 2, 40.0, DARKGREEN);
@@ -89,7 +111,9 @@ int main(void) {
 		DrawRectangleRec(health, RED);
 		DrawText("HEALTH", 45, 20, 18, LIGHTGRAY);
 		if (mermi.active == true) DrawCircle(mermi.ballPos.x, mermi.ballPos.y, 20, mermi.color);
+		//DrawCircle(hold.x, hold.y, 20, BLACK);
 		EndDrawing();
+		
 	}
 	freeTargets(head);
 	CloseWindow();
@@ -98,13 +122,30 @@ int main(void) {
 
 void initGame() {
 	for (int num = 0; num < MAX_BALL; num++) {
-		hedef[num].x = 80;
-		hedef[num].y = 80 - num * 40;
-		hedef[num].radius = 20;
-		hedef[num].color = giveColor();
-		hedef[num].active = true;
-		hedef[num].moving = true;
-
+		if (num <= 3) {
+			hedef[num].x = 80;
+			hedef[num].y = 80 - num * 40;
+			hedef[num].radius = 20;
+			hedef[num].color = (Color){255, 255, 255, 0};
+			hedef[num].active = false;
+			hedef[num].moving = true;
+		}
+		else if (num > 3 && MAX_BALL - 3 > num) {
+			hedef[num].x = 80;
+			hedef[num].y = 80 - num * 40;
+			hedef[num].radius = 20;
+			hedef[num].color = giveColor();
+			hedef[num].active = true;
+			hedef[num].moving = true;
+		}
+		else {
+			hedef[num].x = 80;
+			hedef[num].y = 80 - num * 40;
+			hedef[num].radius = 20;
+			hedef[num].color = (Color){ 255, 255, 255, 0 };
+			hedef[num].active = false;
+			hedef[num].moving = true;
+		}
 		targetCreator(&head, &hedef[num]);
 	}
 
@@ -151,8 +192,6 @@ void targetCreator(node** head, target* hedef) {
 }
 
 void updateGame() {
-	updateTarget(&head);
-
 
 	mermi.ballPos.x += mermi.ballSpeed.x;
 	mermi.ballPos.y += mermi.ballSpeed.y;
@@ -172,20 +211,6 @@ void updateGame() {
 		mermi.ballSpeed.y = 0.0;
 		mermi.isFired = false;
 		mermi.active = true;
-	}
-
-	node* temp = head;
-	while (temp->next != NULL) {
-		if (temp->data->active == true && temp->data->x == hold.x && temp->data->y == hold.y) {
-			node* bos = head;
-			while (bos->next != NULL) {
-				if (bos->data->active = true) {
-					bos->data->moving = true;
-				}
-				temp = temp->next;
-			}
-		}
-		temp = temp->next;
 	}
 }
 
@@ -311,10 +336,10 @@ int whereTarget(node* given) {
 int checkCollision(node* head, bullet* mermi) {
 	node* current = head;
 
-	while (current != NULL) {
+	while (current->next != NULL) {
 		Vector2 hedefCenter = { current->data->x, current->data->y };
 		Vector2 mermiCenter = { mermi->ballPos.x, mermi->ballPos.y };
-		if (CheckCollisionCircles(hedefCenter, 20, mermiCenter, 20)) {
+		if (current->data->active == true && CheckCollisionCircles(hedefCenter, 20, mermiCenter, 20)) {
 			mermi->active = false;
 			mermi->isFired = false;
 			return 1;
@@ -331,7 +356,7 @@ target* shotTargetIndex(node** head, bullet* mermi) {
 		Vector2 hedefCenter = { current->data->x, current->data->y };
 		Vector2 mermiCenter = { mermi->ballPos.x, mermi->ballPos.y };
 
-		if (CheckCollisionCircles(hedefCenter, 20, mermiCenter, 20)) {
+		if (current->data->active == true && CheckCollisionCircles(hedefCenter, 20, mermiCenter, 20)) {
 			return current->data;
 		}
 		current = current->next;
@@ -342,7 +367,7 @@ target* shotTargetIndex(node** head, bullet* mermi) {
 void isBoom() {
 	node* vurulan = head;
 	node* eklenen = NULL;
-	while (vurulan->next != NULL && vurulan->data != shotTargetIndex(&head, &mermi)) {
+	while (vurulan->next != NULL && vurulan->data != shotTargetIndex(&head,&mermi)) {
 		vurulan = vurulan->next;
 	}
 	eklenen = vurulan->next;
@@ -353,31 +378,45 @@ void isBoom() {
 		|| (isSameColor(eklenen->data->color, eklenen->previous->data->color) && isSameColor(eklenen->previous->data->color, eklenen->previous->previous->data->color))) {
 		eklenen->data->active = false; //ekleneni yok et
 		eklenen->data->moving = false;
-		node* tut = eklenen;
-		/*eklenen->next->previous = eklenen->previous;
-		eklenen->previous->next = eklenen->next;
-		free(eklenen->data);
-		free(eklenen);*/
+		hold = (Vector2){ eklenen->previous->data->x, eklenen->previous->data->y };
+		holdBallNext = eklenen->next;
+		holdBallPre = eklenen->previous;
 
-		node* current = tut;
+		node* current = eklenen;
 		while (isSameColor(current->next->data->color, current->data->color) ) { //eklenenin arkasýndakileri de yok et
+			holdBallNext = current->next;
 			current->next->data->active = false;
 			current->next->data->moving = false;
 			current = current->next;
 		}
+		holdBallNext = current->next;
 
-		current = tut;
+		current = eklenen;
 		while (isSameColor(current->previous->data->color, current->data->color) ) { //eklenenin önündekileri de yok et
 			hold = (Vector2){ current->previous->data->x, current->previous->data->y };
+			holdBallPre = current->previous;
 			current->previous->data->active = false;
 			current->previous->data->moving = false;
 			current = current->previous;
 		}
+		holdBallPre = current->previous;
 
-		while (current->previous != NULL) { //öndekileri durdur
-			current->previous->data->moving = false;
-			current = current->previous;
+		while (!(holdBallNext->data->x == hold.x && holdBallNext->data->y == hold.y)) {
+			while (current->previous != NULL) { //öndekileri durdur
+				current->previous->data->moving = false;
+				current = current->previous;
+			}
+			updateTarget(&head);
 		}
+
+		current = head;
+		while (current->next != NULL) { 
+			current->data->moving = true;
+			current = current->next;
+		}
+
+		holdBallPre->next = holdBallNext;
+		holdBallNext->previous = holdBallPre;
 	}
 }
 
@@ -568,7 +607,7 @@ Color giveColorBullet(node* head) {
 	node* current = head;
 	int random = GetRandomValue(1, 3);
 
-	while (current != NULL) {
+	while (current->next != NULL) {
 		if (random == 1 && isSameColor(current->data->color, RED)) {
 			return RED;
 		}
