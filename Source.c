@@ -1,12 +1,13 @@
-#include <raylib.h> 
+﻿#include <raylib.h> 
 #include <stdlib.h>
+#include <stdio.h>
 #include <math.h>
 #include <time.h>
-#define MAX_BALL 15
+#define MAX_BALL 20
 const int screenWidth = 1500;
 const int screenHeight = 800;
 
-typedef enum { GAMEPLAY, LOSING, WINNING } GameScreen;
+typedef enum { GAMEPLAY, START , GAMEOVER } GameScreen;
 
 typedef struct target {
 	float x;
@@ -32,6 +33,7 @@ typedef struct {
 	bool active;
 }bullet;
 
+GameScreen currentScreen = GAMEPLAY;
 int maxball = MAX_BALL;
 node* head = NULL;
 target hedef[999] = { 0 };
@@ -46,6 +48,7 @@ node* holdBallPre = NULL;
 int activeCounter = 0;
 int totalActive = MAX_BALL;
 int score = 0;
+FILE* fptr = NULL;
 
 void initGame();
 void updateGame();
@@ -57,8 +60,7 @@ void bulletFire();
 Color giveColor();
 Color giveColorBullet(node*);
 bool isSameColor(Color, Color);
-GameScreen updateScreen(int);
-int isWinning(node*);
+GameScreen updateScreen();
 
 int checkCollision(node*, bullet*);
 target* shotTargetIndex(node**, bullet*);
@@ -67,6 +69,7 @@ target* createOne(bullet);
 node* addTargetBetween(target* newCreated, target* shotTargetIndex);
 void stepBack(node*, node*);
 void isBoom();
+int highScore(int);
 
 int main(void) {
 	InitWindow(screenWidth, screenHeight, "marble puzzle shoot");
@@ -89,14 +92,21 @@ int main(void) {
 		}
 
 		BeginDrawing();
-		drawTargets(head);
-		DrawCircle(screenWidth / 2, screenHeight / 2, 40.0, DARKGREEN);
-		DrawCircle(550, screenHeight / 2, 30, DARKGREEN);
-		DrawRectangleRec(health, RED);
-		DrawText("HEALTH", 45, 20, 18, LIGHTGRAY);
-		DrawText(TextFormat("SCORE: %d", score), 1350, 22, 20, RED);
-		if (mermi.active == true) DrawCircle(mermi.ballPos.x, mermi.ballPos.y, 20, mermi.color);
-
+		switch (updateScreen()) {
+		case GAMEPLAY:
+			drawTargets(head);
+			DrawCircle(screenWidth / 2, screenHeight / 2, 40.0, DARKGREEN);
+			DrawCircle(550, screenHeight / 2, 30, DARKGREEN);
+			DrawRectangleRec(health, RED);
+			DrawText("HEALTH", 45, 20, 18, LIGHTGRAY);
+			DrawText(TextFormat("SCORE: %d", score), 1350, 22, 20, RED);
+			if (mermi.active == true) DrawCircle(mermi.ballPos.x, mermi.ballPos.y, 20, mermi.color);
+			break;
+		case GAMEOVER:
+			DrawCircle(screenWidth / 2, screenHeight / 2, 20000, BLACK);
+			DrawText(TextFormat("SCORE: %d", score), 1350, 62, 20, RED);
+			DrawText(TextFormat("HIGH SCORE: %d", highScore(score)), 1350, 22, 20, RED);
+		}
 		EndDrawing();
 
 	}
@@ -108,6 +118,7 @@ int main(void) {
 
 void initGame() {
 	int sonuncuNum = maxball;
+	
 	for (int num = 1; num <= maxball; num++) {
 		if (num <= 3) {
 			hedef[num].x = 80;
@@ -117,20 +128,12 @@ void initGame() {
 			hedef[num].active = false;
 			hedef[num].moving = true;
 		}
-		else if (sonuncuNum - 4 <= num && num < sonuncuNum - 2) {
+		else if (sonuncuNum - 3 <= num) {
 			hedef[num].x = 80;
 			hedef[num].y = 80 - num * 40;
 			hedef[num].radius = 20;
 			hedef[num].color = (Color){ 255, 255, 255, 0 };
 			hedef[num].active = false;
-			hedef[num].moving = true;
-		}
-		else if (sonuncuNum - 2 <= num) {
-			hedef[num].x = 80;
-			hedef[num].y = 80 - num * 40;
-			hedef[num].radius = 20;
-			hedef[num].color = PINK;
-			hedef[num].active = true;
 			hedef[num].moving = true;
 		}
 		else {
@@ -196,15 +199,12 @@ void updateGame() {
 	}
 	totalActive = activeCounter;
 
-	if (totalActive == 3) {
-		SetTargetFPS(1500);
-	}
-	else activeCounter = 0;
-
 	if (totalActive == 0) {
+		maxball += 5;
 		initGame();
 		SetTargetFPS(120);
 	}
+	else activeCounter = 0;
 
 	mermi.ballPos.x += mermi.ballSpeed.x;
 	mermi.ballPos.y += mermi.ballSpeed.y;
@@ -219,7 +219,7 @@ void updateGame() {
 	}
 
 	if (mermi.active == false) {
-		if (totalActive > 3) {
+		if (totalActive > 0) {
 			mermi.color = giveColorBullet(head);
 			mermi.ballPos = (Vector2){ screenWidth / 2, screenHeight / 2 };
 			mermi.ballSpeed.x = 0.0;
@@ -227,7 +227,7 @@ void updateGame() {
 			mermi.isFired = false;
 			mermi.active = true;
 		}
-		else if (totalActive <= 3) {
+		else if (totalActive <= 0) {
 			mermi.color = GREEN;
 			mermi.ballPos = (Vector2){ screenWidth / 2, screenHeight / 2 };
 			mermi.ballSpeed.x = 0.0;
@@ -237,7 +237,7 @@ void updateGame() {
 		}
 	}
 
-	if (mermi.active == true && totalActive <= 3) {
+	if (mermi.active == true && totalActive <= 0) {
 		mermi.isFired = false;
 	}
 }
@@ -252,15 +252,15 @@ target* createOne(bullet mermi) {
 		}
 
 		switch (whereTarget(current)) {
-		case 1: // a?a??
+		case 1: // aþaðý
 			newCreated->x = current->data->x;
 			newCreated->y = current->data->y - 40;
 			break;
-		case 2: // yukar?
+		case 2: // yukarý
 			newCreated->x = current->data->x;
 			newCreated->y = current->data->y + 40;
 			break;
-		case 3: //sa?a
+		case 3: //saða
 			newCreated->x = current->data->x - 40;
 			newCreated->y = current->data->y;
 			break;
@@ -323,18 +323,17 @@ void updateTarget(node** head) {
 			if ((selected->x == screenWidth - 300) && (selected->y > 160) && (selected->y != screenHeight - 80)) selected->y--;
 			if ((selected->y == 160) && (selected->x > 550) && (selected->x != screenWidth - 80)) selected->x--;
 			if ((selected->x == 550) && (selected->y < screenHeight / 2) && (selected->y != 80)) selected->y++;
+
 			if ((selected->x == 550) && (selected->y == screenHeight / 2)) selected->active = false;
 
 			if ((selected->x == 550) && (selected->y == screenHeight / 2 - 10) && (selected->moving == true) && (selected->active == true)) {
-				if (isSameColor(selected->color, PINK)) health.width += 10;
-				else  healthCounter++;
+				healthCounter++;
 			}
-			if ((health.width >= 80) && (healthCounter == 1)) health.width -= 40;
-			if ((health.width >= 40) && (healthCounter == 2)) health.width -= 40;
-			if ((health.width >= 0) && (healthCounter == 3)) health.width -= 40;
 
-			if (health.width > 120) health.width = 120;
-			if (health.width < 0) health.width = 0;
+			if ((health.width >= 80) && (healthCounter == 1)) health.width--;
+			if ((health.width >= 40) && (healthCounter == 2)) health.width--;
+			if ((health.width >= 0) && (healthCounter == 3)) health.width--;
+		
 		}
 		current = current->next;
 	}
@@ -344,9 +343,9 @@ int whereTarget(node* given) {
 	node* current = given;
 
 	target* selected = current->data;
-	if ((selected->x == 80) && (selected->y < screenHeight - 80)) return 1; //a?a?? gidiyor
-	if ((selected->y == screenHeight - 80) && (selected->x < screenWidth - 80)) return 3; // sa?a gidiyor
-	if ((selected->x == screenWidth - 80) && (selected->y > 80)) return 2; // yukar? gidiyor
+	if ((selected->x == 80) && (selected->y < screenHeight - 80)) return 1; //aþaðý gidiyor
+	if ((selected->y == screenHeight - 80) && (selected->x < screenWidth - 80)) return 3; // saða gidiyor
+	if ((selected->x == screenWidth - 80) && (selected->y > 80)) return 2; // yukarý gidiyor
 	if ((selected->y == 80) && (selected->x > 300)) return 4; // sola gidiyor
 	if ((selected->x == 300) && (selected->y < screenHeight - 160)) return 1;
 
@@ -365,7 +364,7 @@ int checkCollision(node* head, bullet* mermi) {
 	while (current->next != NULL) {
 		Vector2 hedefCenter = { current->data->x, current->data->y };
 		Vector2 mermiCenter = { mermi->ballPos.x, mermi->ballPos.y };
-		if (!isSameColor(current->data->color, PINK) && current->data->active == true && CheckCollisionCircles(hedefCenter, 20, mermiCenter, 20)) {
+		if (current->data->active == true && CheckCollisionCircles(hedefCenter, 20, mermiCenter, 20)) {
 			mermi->active = false;
 			mermi->isFired = false;
 			return 1;
@@ -405,33 +404,35 @@ void isBoom() {
 		|| (isSameColor(eklenen->data->color, mermi.color) && isSameColor(eklenen->data->color, eklenen->next->data->color) && isSameColor(eklenen->next->data->color, eklenen->next->next->data->color))
 		|| (isSameColor(eklenen->data->color, mermi.color) && isSameColor(eklenen->data->color, eklenen->previous->data->color) && isSameColor(eklenen->previous->data->color, eklenen->previous->previous->data->color))) {
 
-		if (!isSameColor(eklenen->data->color, PINK)) {
-			eklenen->data->active = false; //ekleneni yok et
-		}
+		
+		eklenen->data->active = false; //ekleneni yok et
+		score += 10;
+		
 		hold = (Vector2){ eklenen->previous->data->x, eklenen->previous->data->y };
 		holdBallNext = eklenen->next;
 		holdBallPre = eklenen->previous;
 
 		node* current = eklenen;
-		while (!isSameColor(current->next->data->color, PINK) && current->data->active == false && isSameColor(current->next->data->color, current->data->color)) { //eklenenin arkas?ndakileri de yok et
+		while (current->data->active == false && isSameColor(current->next->data->color, current->data->color)) { //eklenenin arkasýndakileri de yok et
 			holdBallNext = current->next;
 			current->next->data->active = false;
+			score += 10;
 			current = current->next;
 		}
-		if (isSameColor(eklenen->next->data->color, PINK)) holdBallNext = current;
-		else holdBallNext = current->next;
+		holdBallNext = current->next;
 
 		current = eklenen;
-		while (current->data->active == false && isSameColor(current->previous->data->color, current->data->color)) { //eklenenin �n�ndekileri de yok et
+		while (current->data->active == false && isSameColor(current->previous->data->color, current->data->color)) { //eklenenin önündekileri de yok et
 			hold = (Vector2){ current->previous->data->x, current->previous->data->y };
 			holdBallPre = current->previous;
 			current->previous->data->active = false;
+			score += 10;
 			current = current->previous;
 		}
 		holdBallPre = current->previous;
 
 		while (!(holdBallNext->data->x == hold.x && holdBallNext->data->y == hold.y)) {
-			while (current->previous != NULL) { //�ndekileri durdur
+			while (current->previous != NULL) { //öndekileri durdur
 				current->previous->data->moving = false;
 				current = current->previous;
 			}
@@ -466,7 +467,7 @@ void stepBack(node* head, node* newCreated) {
 		int hamle = 40;
 
 		switch (whereTarget(current)) {
-		case 1: // a?a??
+		case 1: // aþaðý
 			if (current->data->x == 80) {
 
 				while (current->data->y < screenHeight - 80 && hamle > 0) {
@@ -505,7 +506,7 @@ void stepBack(node* head, node* newCreated) {
 			}
 			break;
 
-		case 2: // yukar?
+		case 2: // yukarý
 			if (current->data->x == screenWidth - 80) {
 
 				while (current->data->y > 80 && hamle > 0) {
@@ -532,7 +533,7 @@ void stepBack(node* head, node* newCreated) {
 			}
 			break;
 
-		case 3: //sa?a
+		case 3: //saða
 			if (current->data->y == screenHeight - 80) {
 
 				while (current->data->x < screenWidth - 80 && hamle > 0) {
@@ -634,9 +635,9 @@ Color giveColor() {
 
 	if (random == 2) return RED;
 	else if (random == 3) return BLUE;
-	else if (random == 4) return PURPLE;
-	else if (random == 5) return YELLOW;
-	else if (random == 5) return BLACK;
+	else if (random == 4) return YELLOW;
+	else if (random == 5) return PURPLE;
+	else if (random == 6) return BLACK;
 	else return GREEN;
 }
 
@@ -659,13 +660,13 @@ Color giveColorBullet(node* head) {
 		else if (random == 3 && isSameColor(current->data->color, GREEN) && (current->data->active == true)) {
 			return GREEN;
 		}
-		else if (random == 4 && isSameColor(current->data->color, PURPLE) && (current->data->active == true)) {
-			return PURPLE;
-		}
-		else if (random == 5 && isSameColor(current->data->color, YELLOW) && (current->data->active == true)) {
+		else if (random == 4 && isSameColor(current->data->color, YELLOW) && (current->data->active == true)) {
 			return YELLOW;
 		}
-		else if (random == 5 && isSameColor(current->data->color, BLACK) && (current->data->active == true)) {
+		else if (random == 5 && isSameColor(current->data->color, PURPLE) && (current->data->active == true)) {
+			return PURPLE;
+		}
+		else if (random == 6 && isSameColor(current->data->color, BLACK) && (current->data->active == true)) {
 			return BLACK;
 		}
 		current = current->next;
@@ -677,26 +678,28 @@ bool isSameColor(Color color1, Color color2) {
 	return (color1.r == color2.r && color1.g == color2.g && color1.b == color2.b && color1.a == color2.a);
 }
 
-GameScreen updateScreen(int healthcounter) {
-	switch (healthCounter) {
+GameScreen updateScreen() {
+	switch (healthCounter) { //ekran değişimi
 	case 0: case 1: case 2:
-		return GAMEPLAY;
-		if (isWinning(head)) return WINNING; break;
-
+		return GAMEPLAY; break;
 	default:
-		return LOSING; break;
+		return GAMEOVER; break;
 	}
 }
 
-int isWinning(node* head) {
-	node* current = head;
-	int passiveCounter = 0;
 
-	while (current != NULL) {
-		if (current->data->x == 550 && current->data->y == screenHeight / 2) current->data->moving = false;
-		if (current->data->moving == false) passiveCounter++;
-		current = current->next;
+int highScore(int score) {
+	int oldScore = 0;
+	fptr = fopen("highscore.txt", "r");
+		fscanf(fptr, "%d", &oldScore);
+	fclose(fptr);
+
+	if (score>oldScore) {
+		fptr = fopen("highscore.txt", "w");
+		fprintf(fptr, "%d", score);
+		fclose(fptr);
+		return score;
 	}
-	if (passiveCounter >= MAX_BALL) return 1;
-	return 0;
+
+	return oldScore;
 }
