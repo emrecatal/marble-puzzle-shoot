@@ -2,11 +2,11 @@
 #include <stdlib.h>
 #include <math.h>
 #include <time.h>
-#define MAX_BALL 20
+#define MAX_BALL 15
 const int screenWidth = 1500;
 const int screenHeight = 800;
 
-typedef enum { GAMEPLAY, LOSING, WINNING } GameScreen; 
+typedef enum { GAMEPLAY, LOSING, WINNING } GameScreen;
 
 typedef struct target {
 	float x;
@@ -32,11 +32,6 @@ typedef struct {
 	bool active;
 }bullet;
 
-typedef struct {
-	int points;
-	int wave;
-}stats;
-
 int maxball = MAX_BALL;
 node* head = NULL;
 target hedef[999] = { 0 };
@@ -50,10 +45,9 @@ node* holdBallNext = NULL;
 node* holdBallPre = NULL;
 int activeCounter = 0;
 int totalActive = MAX_BALL;
-stats gameStats = { 0 };
+int score = 0;
 
 void initGame();
-void reInýtGame(int);
 void updateGame();
 void targetCreator(node**, target*);
 void drawTargets(node*);
@@ -100,10 +94,11 @@ int main(void) {
 		DrawCircle(550, screenHeight / 2, 30, DARKGREEN);
 		DrawRectangleRec(health, RED);
 		DrawText("HEALTH", 45, 20, 18, LIGHTGRAY);
-		DrawText(TextFormat("SCORE: %d", gameStats.points), 1350, 22, 20, RED);
+		DrawText(TextFormat("SCORE: %d", score), 1350, 22, 20, RED);
 		if (mermi.active == true) DrawCircle(mermi.ballPos.x, mermi.ballPos.y, 20, mermi.color);
+
 		EndDrawing();
-		
+
 	}
 	freeTargets(head);
 	UnloadTexture(textureMap);
@@ -112,26 +107,9 @@ int main(void) {
 }
 
 void initGame() {
-	gameStats.wave = 0;
-	gameStats.points = 0;
-	for (int num = 0; num < maxball; num++) {
-		if (2 >= num) {
-			hedef[num].x = 80;
-			hedef[num].y = 80 - num * 40;
-			hedef[num].radius = 20;
-			hedef[num].color = (Color){255, 255, 255, 0};
-			hedef[num].active = false;
-			hedef[num].moving = true;
-		}
-		else if (num > 2 && maxball - 6 > num) {
-			hedef[num].x = 80;
-			hedef[num].y = 80 - num * 40;
-			hedef[num].radius = 20;
-			hedef[num].color = giveColor();
-			hedef[num].active = true;
-			hedef[num].moving = true;
-		}
-		else if (num >= maxball - 6 && maxball - 4 > num) {
+	int sonuncuNum = maxball;
+	for (int num = 1; num <= maxball; num++) {
+		if (num <= 3) {
 			hedef[num].x = 80;
 			hedef[num].y = 80 - num * 40;
 			hedef[num].radius = 20;
@@ -139,11 +117,27 @@ void initGame() {
 			hedef[num].active = false;
 			hedef[num].moving = true;
 		}
-		else{
+		else if (sonuncuNum - 4 <= num && num < sonuncuNum - 2) {
+			hedef[num].x = 80;
+			hedef[num].y = 80 - num * 40;
+			hedef[num].radius = 20;
+			hedef[num].color = (Color){ 255, 255, 255, 0 };
+			hedef[num].active = false;
+			hedef[num].moving = true;
+		}
+		else if (sonuncuNum - 2 <= num) {
 			hedef[num].x = 80;
 			hedef[num].y = 80 - num * 40;
 			hedef[num].radius = 20;
 			hedef[num].color = PINK;
+			hedef[num].active = true;
+			hedef[num].moving = true;
+		}
+		else {
+			hedef[num].x = 80;
+			hedef[num].y = 80 - num * 40;
+			hedef[num].radius = 20;
+			hedef[num].color = giveColor();
 			hedef[num].active = true;
 			hedef[num].moving = true;
 		}
@@ -157,46 +151,6 @@ void initGame() {
 	mermi.color = giveColorBullet(head);
 	mermi.isFired = false;
 	mermi.active = true;
-}
-
-void reInýtGame(int wave) {
-	maxball = maxball + wave * 5;
-	for (int num = 0; num < maxball; num++) {
-		if (2 >= num) {
-			hedef[num].x = 80;
-			hedef[num].y = 80 - num * 40;
-			hedef[num].radius = 20;
-			hedef[num].color = (Color){ 255, 255, 255, 0 };
-			hedef[num].active = false;
-			hedef[num].moving = true;
-		}
-		else if (num > 2 && maxball - 6 > num) {
-			hedef[num].x = 80;
-			hedef[num].y = 80 - num * 40;
-			hedef[num].radius = 20;
-			hedef[num].color = giveColor();
-			hedef[num].active = true;
-			hedef[num].moving = true;
-		}
-		else if (num >= maxball - 6 && maxball - 4 > num) {
-			hedef[num].x = 80;
-			hedef[num].y = 80 - num * 40;
-			hedef[num].radius = 20;
-			hedef[num].color = (Color){ 255, 255, 255, 0 };
-			hedef[num].active = false;
-			hedef[num].moving = true;
-		}
-		else {
-			hedef[num].x = 80;
-			hedef[num].y = 80 - num * 40;
-			hedef[num].radius = 20;
-			hedef[num].color = PINK;
-			hedef[num].active = true;
-			hedef[num].moving = true;
-		}
-
-		targetCreator(&head, &hedef[num]);
-	}
 }
 
 void targetCreator(node** head, target* hedef) {
@@ -248,8 +202,7 @@ void updateGame() {
 	else activeCounter = 0;
 
 	if (totalActive == 0) {
-		gameStats.wave += 1;
-		reInitGame();
+		initGame();
 		SetTargetFPS(120);
 	}
 
@@ -299,15 +252,15 @@ target* createOne(bullet mermi) {
 		}
 
 		switch (whereTarget(current)) {
-		case 1: // aþaðý
+		case 1: // a?a??
 			newCreated->x = current->data->x;
 			newCreated->y = current->data->y - 40;
 			break;
-		case 2: // yukarý
+		case 2: // yukar?
 			newCreated->x = current->data->x;
 			newCreated->y = current->data->y + 40;
 			break;
-		case 3: //saða
+		case 3: //sa?a
 			newCreated->x = current->data->x - 40;
 			newCreated->y = current->data->y;
 			break;
@@ -351,7 +304,7 @@ node* addTargetBetween(target* newCreated, target* shotTargetIndex) {
 	shotted->next = new;
 
 	return new;
-} 
+}
 
 void updateTarget(node** head) {
 	node* current = *head;
@@ -372,7 +325,7 @@ void updateTarget(node** head) {
 			if ((selected->x == 550) && (selected->y < screenHeight / 2) && (selected->y != 80)) selected->y++;
 			if ((selected->x == 550) && (selected->y == screenHeight / 2)) selected->active = false;
 
-			if ((selected->x == 550) && (selected->y == screenHeight / 2 - 10) && (selected->moving == true) && (selected->active == true)){
+			if ((selected->x == 550) && (selected->y == screenHeight / 2 - 10) && (selected->moving == true) && (selected->active == true)) {
 				if (isSameColor(selected->color, PINK)) health.width += 10;
 				else  healthCounter++;
 			}
@@ -391,9 +344,9 @@ int whereTarget(node* given) {
 	node* current = given;
 
 	target* selected = current->data;
-	if ((selected->x == 80) && (selected->y < screenHeight - 80)) return 1; //aþaðý gidiyor
-	if ((selected->y == screenHeight - 80) && (selected->x < screenWidth - 80)) return 3; // saða gidiyor
-	if ((selected->x == screenWidth - 80) && (selected->y > 80)) return 2; // yukarý gidiyor
+	if ((selected->x == 80) && (selected->y < screenHeight - 80)) return 1; //a?a?? gidiyor
+	if ((selected->y == screenHeight - 80) && (selected->x < screenWidth - 80)) return 3; // sa?a gidiyor
+	if ((selected->x == screenWidth - 80) && (selected->y > 80)) return 2; // yukar? gidiyor
 	if ((selected->y == 80) && (selected->x > 300)) return 4; // sola gidiyor
 	if ((selected->x == 300) && (selected->y < screenHeight - 160)) return 1;
 
@@ -442,32 +395,34 @@ void isBoom() {
 	node* eklenen = NULL;
 
 
-	while (vurulan->next != NULL && vurulan->data != shotTargetIndex(&head,&mermi)) {
+	while (vurulan->next != NULL && vurulan->data != shotTargetIndex(&head, &mermi)) {
 		vurulan = vurulan->next;
 	}
 	eklenen = vurulan->next;
 	eklenen = eklenen->previous;
 
-	if ((  isSameColor(eklenen->data->color, mermi.color) && isSameColor(eklenen->data->color, eklenen->next->data->color) && isSameColor(eklenen->data->color, eklenen->previous->data->color))
+	if ((isSameColor(eklenen->data->color, mermi.color) && isSameColor(eklenen->data->color, eklenen->next->data->color) && isSameColor(eklenen->data->color, eklenen->previous->data->color))
 		|| (isSameColor(eklenen->data->color, mermi.color) && isSameColor(eklenen->data->color, eklenen->next->data->color) && isSameColor(eklenen->next->data->color, eklenen->next->next->data->color))
 		|| (isSameColor(eklenen->data->color, mermi.color) && isSameColor(eklenen->data->color, eklenen->previous->data->color) && isSameColor(eklenen->previous->data->color, eklenen->previous->previous->data->color))) {
 
-		eklenen->data->active = false; //ekleneni yok et
-		
+		if (!isSameColor(eklenen->data->color, PINK)) {
+			eklenen->data->active = false; //ekleneni yok et
+		}
 		hold = (Vector2){ eklenen->previous->data->x, eklenen->previous->data->y };
 		holdBallNext = eklenen->next;
 		holdBallPre = eklenen->previous;
 
 		node* current = eklenen;
-		while (current->data->active == false && isSameColor(current->next->data->color, current->data->color)) { //eklenenin arkasýndakileri de yok et
+		while (!isSameColor(current->next->data->color, PINK) && current->data->active == false && isSameColor(current->next->data->color, current->data->color)) { //eklenenin arkas?ndakileri de yok et
 			holdBallNext = current->next;
 			current->next->data->active = false;
 			current = current->next;
 		}
-		holdBallNext = current->next;
+		if (isSameColor(eklenen->next->data->color, PINK)) holdBallNext = current;
+		else holdBallNext = current->next;
 
 		current = eklenen;
-		while (current->data->active == false && isSameColor(current->previous->data->color, current->data->color)){ //eklenenin önündekileri de yok et
+		while (current->data->active == false && isSameColor(current->previous->data->color, current->data->color)) { //eklenenin önündekileri de yok et
 			hold = (Vector2){ current->previous->data->x, current->previous->data->y };
 			holdBallPre = current->previous;
 			current->previous->data->active = false;
@@ -484,7 +439,7 @@ void isBoom() {
 		}
 
 		current = head;
-		while (current->next != NULL) { 
+		while (current->next != NULL) {
 			current->data->moving = true;
 			current = current->next;
 		}
@@ -511,7 +466,7 @@ void stepBack(node* head, node* newCreated) {
 		int hamle = 40;
 
 		switch (whereTarget(current)) {
-		case 1: // aþaðý
+		case 1: // a?a??
 			if (current->data->x == 80) {
 
 				while (current->data->y < screenHeight - 80 && hamle > 0) {
@@ -550,7 +505,7 @@ void stepBack(node* head, node* newCreated) {
 			}
 			break;
 
-		case 2: // yukarý
+		case 2: // yukar?
 			if (current->data->x == screenWidth - 80) {
 
 				while (current->data->y > 80 && hamle > 0) {
@@ -577,7 +532,7 @@ void stepBack(node* head, node* newCreated) {
 			}
 			break;
 
-		case 3: //saða
+		case 3: //sa?a
 			if (current->data->y == screenHeight - 80) {
 
 				while (current->data->x < screenWidth - 80 && hamle > 0) {
@@ -632,7 +587,7 @@ void stepBack(node* head, node* newCreated) {
 		}
 		current = current->previous;
 	}
-	return ;
+	return;
 }
 
 
@@ -673,8 +628,8 @@ void bulletFire() {
 Color giveColor() {
 	int random;
 	if (45 > maxball && maxball >= 30) random = GetRandomValue(1, 4);
-	else if (65>maxball && maxball >= 45) random = GetRandomValue(1, 5);
-	else if (maxball>= 65) random = GetRandomValue(1, 6);
+	else if (65 > maxball && maxball >= 45) random = GetRandomValue(1, 5);
+	else if (maxball >= 65) random = GetRandomValue(1, 6);
 	else random = GetRandomValue(1, 3);
 
 	if (random == 2) return RED;
@@ -687,7 +642,7 @@ Color giveColor() {
 
 Color giveColorBullet(node* head) {
 	node* current = head;
-	int random; 
+	int random;
 	if (45 > maxball && maxball >= 30) random = GetRandomValue(1, 4);
 	else if (65 > maxball && maxball >= 45) random = GetRandomValue(1, 5);
 	else if (maxball >= 65) random = GetRandomValue(1, 6);
@@ -718,7 +673,7 @@ Color giveColorBullet(node* head) {
 	giveColorBullet(head);
 }
 
-bool isSameColor(Color color1, Color color2) { 
+bool isSameColor(Color color1, Color color2) {
 	return (color1.r == color2.r && color1.g == color2.g && color1.b == color2.b && color1.a == color2.a);
 }
 
