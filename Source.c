@@ -7,7 +7,7 @@
 const int screenWidth = 1500;
 const int screenHeight = 800;
 
-typedef enum { GAMEPLAY, START , GAMEOVER } GameScreen;
+typedef enum { TITLE, GAMEPLAY, GAMEOVER } GameScreen;
 
 typedef struct target {
 	float x;
@@ -33,7 +33,7 @@ typedef struct {
 	bool active;
 }bullet;
 
-GameScreen currentScreen = GAMEPLAY;
+GameScreen currentScreen = TITLE;
 int maxball = MAX_BALL;
 node* head = NULL;
 target hedef[999] = { 0 };
@@ -47,8 +47,11 @@ node* holdBallNext = NULL;
 node* holdBallPre = NULL;
 int activeCounter = 0;
 int totalActive = MAX_BALL;
+int waveCounter = 1;
+int timer = -1;
 int score = 0;
 FILE* fptr = NULL;
+bool gameStarted = false;
 
 void initGame();
 void updateGame();
@@ -60,7 +63,6 @@ void bulletFire();
 Color giveColor();
 Color giveColorBullet(node*);
 bool isSameColor(Color, Color);
-GameScreen updateScreen();
 
 int checkCollision(node*, bullet*);
 target* shotTargetIndex(node**, bullet*);
@@ -76,13 +78,40 @@ int main(void) {
 	SetTargetFPS(120);
 	initGame();
 
-	Texture2D textureMap = LoadTexture("images/yenimapp4.png");
+	Texture2D playButton = LoadTexture("images/playButton.png");
+	Texture2D backGround = LoadTexture("images/background.png");
+	Texture2D zuma = LoadTexture("images/zuma.png");
+	Texture2D map = LoadTexture("images/map.png");
+
+	Rectangle sourceRec = { 0 ,0 ,playButton.width, playButton.height };
+	Rectangle pressBounds = { 640, 480, playButton.width, playButton.height };
+
+	Vector2 texturePosition = { 750, 400 };
+	Vector2 textureCenter = { zuma.width / 2.0f, zuma.height / 2.0f };
 
 	while (!WindowShouldClose()) {
 		ClearBackground(LIGHTGRAY);
+		mouse = GetMousePosition();
+		float deltaX = mouse.x - texturePosition.x;
+		float deltaY = mouse.y - texturePosition.y;
+		float angle = (atan2f(deltaY, deltaX) * (180.0f / PI)) + 90;
 
-		updateGame();
-		updateTarget(&head);
+		switch (healthCounter) { //ekran değişimi
+		case 0: case 1: case 2:
+			if (currentScreen == TITLE && CheckCollisionPointRec(mouse, pressBounds) && IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+				currentScreen = GAMEPLAY;
+				gameStarted = true;
+			}
+			break;
+		default:
+			currentScreen = GAMEOVER; break;
+		}
+
+		if (gameStarted == true) {
+			updateGame();
+			updateTarget(&head);
+		}
+
 		if (IsMouseButtonDown(MOUSE_LEFT_BUTTON)) bulletFire();
 
 		if (checkCollision(head, &mermi)) {
@@ -92,14 +121,30 @@ int main(void) {
 		}
 
 		BeginDrawing();
-		switch (updateScreen()) {
+		switch (currentScreen) {
+		case TITLE:
+			DrawTexture(backGround, 0, 0, WHITE);
+			DrawTextureRec(playButton, sourceRec, (Vector2) { pressBounds.x, pressBounds.y }, WHITE);
+			break;
+
 		case GAMEPLAY:
+			DrawTexture(map, 0, 0, WHITE);
 			drawTargets(head);
 			DrawCircle(screenWidth / 2, screenHeight / 2, 40.0, DARKGREEN);
 			DrawCircle(550, screenHeight / 2, 30, DARKGREEN);
 			DrawRectangleRec(health, RED);
 			DrawText("HEALTH", 45, 20, 18, LIGHTGRAY);
 			DrawText(TextFormat("SCORE: %d", score), 1350, 22, 20, RED);
+			DrawTexturePro(zuma,
+				(Rectangle) {
+				0, 0, zuma.width, zuma.height
+			},
+				(Rectangle) {
+				texturePosition.x, texturePosition.y, zuma.width, zuma.height
+			},
+				textureCenter,
+				angle,
+				WHITE);
 			if (mermi.active == true) DrawCircle(mermi.ballPos.x, mermi.ballPos.y, 20, mermi.color);
 			break;
 		case GAMEOVER:
@@ -111,14 +156,13 @@ int main(void) {
 
 	}
 	freeTargets(head);
-	UnloadTexture(textureMap);
 	CloseWindow();
 	return 0;
 }
 
 void initGame() {
 	int sonuncuNum = maxball;
-	
+
 	for (int num = 1; num <= maxball; num++) {
 		if (num <= 3) {
 			hedef[num].x = 80;
@@ -200,10 +244,12 @@ void updateGame() {
 	totalActive = activeCounter;
 
 	if (totalActive == 0) {
+		waveCounter++;
 		maxball += 5;
 		initGame();
 		SetTargetFPS(120);
 	}
+
 	else activeCounter = 0;
 
 	mermi.ballPos.x += mermi.ballSpeed.x;
@@ -615,7 +661,7 @@ void freeTargets(node* head) {
 void bulletFire() {
 	if (mermi.isFired == false && mermi.active == true) {
 		mermi.ballPos = (Vector2){ screenWidth / 2, screenHeight / 2 };
-		Vector2 mouse = GetMousePosition();
+		mouse = GetMousePosition();
 
 		if (mouse.x > screenWidth / 2 && mouse.y < screenHeight / 2) aimingAngle = atan(-(mermi.ballPos.y - mouse.y) / (mouse.x - mermi.ballPos.x));
 		if (mouse.x < screenWidth / 2 && mouse.y < screenHeight / 2) aimingAngle = PI - atan((mermi.ballPos.y - mouse.y) / (mouse.x - mermi.ballPos.x));
@@ -677,16 +723,6 @@ Color giveColorBullet(node* head) {
 bool isSameColor(Color color1, Color color2) {
 	return (color1.r == color2.r && color1.g == color2.g && color1.b == color2.b && color1.a == color2.a);
 }
-
-GameScreen updateScreen() {
-	switch (healthCounter) { //ekran değişimi
-	case 0: case 1: case 2:
-		return GAMEPLAY; break;
-	default:
-		return GAMEOVER; break;
-	}
-}
-
 
 int highScore(int score) {
 	int oldScore = 0;
